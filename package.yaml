@@ -27,6 +27,7 @@ dependencies:
 - persistent-postgresql
 - persistent-template
 - servant
+- servant-client
 - servant-server
 - text
 - transformers

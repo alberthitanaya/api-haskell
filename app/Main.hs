@@ -1,6 +1,11 @@
 module Main where
 
-import App
-
+import Api
+import Database
+-- Start server from App.hs
 main :: IO ()
-main = run
+main = runServer
+
+-- Migrate DB from Database.hs
+startDB :: IO ()
+startDB = runDB
