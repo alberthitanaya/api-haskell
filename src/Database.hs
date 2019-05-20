@@ -2,19 +2,25 @@
 
 module Database where
 
+import           Control.Monad (void)
 import           Control.Monad.Logger (runStdoutLoggingT, MonadLogger, LoggingT)
 import           Control.Monad.Reader (runReaderT)
 import           Control.Monad.IO.Class (MonadIO)
+import           Data.ByteString.Char8 (pack, unpack)
 import           Data.Int (Int64)
 import           Database.Persist (Entity(..), selectList, (==.), (<.), SelectOpt(..), get, insert, delete)
 import           Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT, fromSqlKey, toSqlKey)
+import           Database.Redis (ConnectInfo, connect, Redis, runRedis, defaultConnectInfo, setex, Connection)
+import qualified Database.Redis as Redis
 
 import           Schema
 
 type PGInfo = ConnectionString
+type RedisInfo = ConnectInfo
 
 -- Function for Main.hs
 runDB :: IO ()
+
 runDB = migrateDB localConnString
 
 localConnString :: ConnectionString
@@ -30,6 +36,27 @@ migrateDB connString = runAction connString (runMigration migrateAll)
 
 fetchPostgresConnection :: IO ConnectionString
 fetchPostgresConnection = return localConnString
+
+-- Redis
+
+fetchRedisConnection :: IO ConnectInfo
+fetchRedisConnection = return defaultConnectInfo
+
+runRedisAction :: ConnectInfo -> Redis a -> IO a
+runRedisAction redisInfo action = do
+  connection <- connect redisInfo
+  runRedis connection action
+
+cacheUser :: ConnectInfo -> Int64 -> User -> IO ()
+cacheUser redisInfo uid user = runRedisAction redisInfo $ void $
+  setex (pack . show $ uid) 3600 (pack . show $ user)
+
+fetchUserRedis :: ConnectInfo -> Int64 -> IO (Maybe User)
+fetchUserRedis redisInfo uid = runRedisAction redisInfo $ do
+  result <- Redis.get (pack . show $ uid)
+  case result of
+    Right (Just userString) -> return $ Just (read . unpack $ userString)
+    _                       -> return Nothing
 
 -- CRUD
 

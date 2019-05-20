@@ -30,7 +30,7 @@ PTH.share [PTH.mkPersist PTH.sqlSettings, PTH.mkMigrate "migrateAll"] [PTH.persi
 instance ToJSON User where
   toJSON user = object
     [ "name" .= userName user
-    , "email" .= userName user
+    , "email" .= userEmail user
     , "age" .= userAge user
     , "occupation" .= userOccupation user
     ]

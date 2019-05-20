@@ -36,6 +36,7 @@ createUserHandler :: ConnectionString -> User -> Handler Int64
 createUserHandler connString user = liftIO $ createUserPG connString user
 
 -- server
+-- TODO: These must line up with UsersAPI subtypes
 usersServer :: ConnectionString -> Server UsersAPI
 usersServer pgInfo =
   (fetchUserHandler pgInfo) :<|>
