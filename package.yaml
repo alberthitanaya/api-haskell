@@ -28,10 +28,12 @@ dependencies:
 - persistent-postgresql
 - persistent-template
 - hedis
+- hspec
 - servant
 - servant-client
 - servant-server
 - text
+- time
 - transformers
 - aeson
 - wai
@@ -61,3 +63,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - api-haskell
+    - hspec
+    - time

@@ -10,7 +10,7 @@ import           Data.ByteString.Char8 (pack, unpack)
 import           Data.Int (Int64)
 import           Database.Persist (Entity(..), selectList, (==.), (<.), SelectOpt(..), get, insert, delete)
 import           Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT, fromSqlKey, toSqlKey)
-import           Database.Redis (ConnectInfo, connect, Redis, runRedis, defaultConnectInfo, setex, Connection)
+import           Database.Redis (ConnectInfo, connect, Redis, runRedis, defaultConnectInfo, setex, Connection, del)
 import qualified Database.Redis as Redis
 
 import           Schema
@@ -57,6 +57,13 @@ fetchUserRedis redisInfo uid = runRedisAction redisInfo $ do
   case result of
     Right (Just userString) -> return $ Just (read . unpack $ userString)
     _                       -> return Nothing
+
+deleteUserCache :: RedisInfo -> Int64 -> IO ()
+deleteUserCache redisInfo uid = do
+  connection <- connect redisInfo
+  runRedis connection $ do
+    _ <- del [pack . show $ uid]
+    return ()
 
 -- CRUD
 

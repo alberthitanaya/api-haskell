@@ -54,3 +54,11 @@ runServer = do
   pgInfo <- fetchPostgresConnection
   redisInfo <- fetchRedisConnection
   run 8000 (serve usersApi (usersServer pgInfo redisInfo))
+
+-- servant-client funcs
+
+fetchUserClient :: Int64 -> ClientM User
+createUserClient :: User -> ClientM Int64
+
+(fetchUserClient
+  :<|> createUserClient) = client (Proxy :: Proxy UsersAPI)
