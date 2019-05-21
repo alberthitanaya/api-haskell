@@ -15,7 +15,7 @@ import           Servant.API
 import           Servant.Client
 import           Servant.Server
 
-import          Database (createUserPG, fetchUserPG, fetchPostgresConnection)
+import          Database (cacheUser, createUserPG, fetchUserPG, fetchUserRedis, fetchPostgresConnection, fetchRedisConnection, RedisInfo, PGInfo)
 import          Schema
 
 type UsersAPI =
@@ -25,21 +25,25 @@ type UsersAPI =
 
 -- Handlers
 
-fetchUserHandler :: ConnectionString -> Int64 -> Handler User
-fetchUserHandler connString uid = do
-  maybeUser <- liftIO $ fetchUserPG connString uid
-  case maybeUser of
+fetchUserHandler :: PGInfo -> RedisInfo -> Int64 -> Handler User
+fetchUserHandler pgInfo redisInfo uid = do
+  maybeCachedUser <- liftIO $ fetchUserRedis redisInfo uid
+  case maybeCachedUser of
     Just user -> return user
-    Nothing -> Handler $ (throwE $ err401 { errBody = "Could not find user with that ID" })
+    Nothing -> do
+      maybeUser <- liftIO $ fetchUserPG pgInfo uid
+      case maybeUser of
+        Just user -> liftIO (cacheUser redisInfo uid user) >> return user
+        Nothing -> Handler $ (throwE $ err401 { errBody = "Could not find user with that ID" })
 
 createUserHandler :: ConnectionString -> User -> Handler Int64
 createUserHandler connString user = liftIO $ createUserPG connString user
 
 -- server
 -- TODO: These must line up with UsersAPI subtypes
-usersServer :: ConnectionString -> Server UsersAPI
-usersServer pgInfo =
-  (fetchUserHandler pgInfo) :<|>
+usersServer :: PGInfo -> RedisInfo -> Server UsersAPI
+usersServer pgInfo redisInfo =
+  (fetchUserHandler pgInfo redisInfo) :<|>
   (createUserHandler pgInfo)
 
 usersApi :: Proxy UsersAPI
@@ -47,5 +51,6 @@ usersApi = Proxy :: Proxy UsersAPI
 
 runServer :: IO ()
 runServer = do
-  connString <- fetchPostgresConnection
-  run 8000 (serve usersApi (usersServer connString))
+  pgInfo <- fetchPostgresConnection
+  redisInfo <- fetchRedisConnection
+  run 8000 (serve usersApi (usersServer pgInfo redisInfo))
